@@ -1,0 +1,424 @@
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>W0DBQ Field Day Logger</title>
+    <link rel="stylesheet" type="text/css" href="./style.css">
+  
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="./style.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+</head>
+<body>
+    <header><h1>GREAT RIVER AMATEUR RADIO CLUB</h1></header>
+
+    <div class="row"> 
+        <div class="box">
+            <input type="text" class="input" id="input" style="text-transform: uppercase" oninput="search()" placeholder="Callsign">
+            <input type="text" class="input  small-box" id="class" style="text-transform: uppercase" oninput="checkClass()" placeholder="Class">
+            <input type="text" class="input small-box" id="section" style="text-transform: uppercase" oninput="checkSection()" placeholder="Section">
+            <p id="result">&nbsp;</p>
+            <button id="logbtn" onclick="addContact();">Log Contact</button>
+            <!-- <button onclick="">Load Map</button> -->
+            <button onclick="clearData();">Clear</button>
+            <!-- <button onclick="testdata();">Test</button> -->
+            <div class="space"></div>
+           <div> 
+            <p>My Operation</p>
+            <select id="band" class="operator">
+                <option value="6M">6 Meters</option>
+                <option value="10M">10 Meters</option>
+                <option value="12M">12 Meters</option>
+                <option value="15M">15 Meters</option>
+                <option value="17M">17 Meters</option>
+                <option value="20M">20 Meters</option>
+                <option value="30M">30 Meters</option>
+                <option value="40M">40 Meters</option>
+                <option value="80M">80 Meters</option>
+                <option value="160M">160 Meters</option>
+            </select>
+
+            <select id="mode"class="operator">
+                
+                <option>SSB</option>
+                <option>CW</option>
+                <option>Digital</option>
+            </select>
+
+            <input type="text" id="operator" class="operator" placeholder="Operator" style="text-transform: uppercase">
+            <div class="space"></div>
+            <p class="info">&nbsp;&nbsp;Callsign: W0DBQ Class: 2A Section: IA</p>
+           </div>
+        </div>
+
+        <div class="box2">
+            <div id="map" style="height: 100%; border: 1px solid #AAA;"></div>
+            <canvas id="myChart"></canvas>
+            <p id="lat" style="display: none;" >&nbsp;</p>
+            <p id="lng" style="display: none;">&nbsp;</p>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        <h1 id="stats"></h1>
+
+    </div>
+    
+
+
+    <script>
+            document.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    addContact();
+                }else if (e.keyCode === 27){
+                    clearData();
+                }
+            })
+
+            var map = L.map('map').setView([30.566793, -0.678554],2);
+            L.tileLayer('https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=VRriVCRQ5SeLPdIdNuzi', {
+                attributions: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>'
+            }).addTo(map);
+
+            var layerGroup = L.layerGroup().addTo(map);
+            getdata();
+            loggerStatus();
+            //checkContact();
+            let calllat = ''; 
+            let calllng = '';
+            let callcountry = ''; 
+
+            $(document).ready(function() {('getdata();', 9000)});
+       
+            function loggerStatus() {
+                document.getElementById('logbtn').disabled = true;
+            };
+
+            function updateStats(mode,band) {
+                let myurl = 'https://joefeyen.com/dbq/api.php?api=updatestats'
+                console.log(myurl);
+                fetch(myurl)
+                    .then(response => response.text)
+                    .then(data => {
+                        
+                        clearData();
+                        getdata();
+                    });
+            };
+
+            
+            function getdata() {
+                var totalcontacts = 0;
+                var ssb = 0;
+                var cw = 0;
+                var digital = 0;
+
+
+                fetch('https://joefeyen.com/dbq/count.php')
+                    .then(response => response.json())
+                    .then(data => {
+                        
+
+                        for(var i = 0; i < data.length; i++) {
+                            var obj = data[i];
+                            //console.log(obj.exact_row_count);
+                            if(obj.table_name == 'logs'){
+                                totalcontacts = obj.exact_row_count;
+                                console.log(totalcontacts)
+                                 
+                            }
+
+                            if(obj.table_name == 'SSB'){
+                                ssb = obj.exact_row_count;
+                                 
+                            }
+
+                            if(obj.table_name == 'CW'){
+                                cw = obj.exact_row_count;
+                                 
+                            }
+
+                            if(obj.table_name == 'digital'){
+                                digital = obj.exact_row_count;        
+                            }
+
+                        }
+
+                        document.getElementById('stats').innerHTML = `Total Contacts: ${totalcontacts} | SSB: ${ssb} | CW: ${cw} | Digital: ${digital}`
+                    });
+            }
+
+            function chechdata() {
+                const callsign = document.getElementById('input').value
+                const band = document.getElementById('band').value
+                const contactmode = document.getElementById('mode').value
+                fetch('https://joefeyen.com/dbq/api.php?api=datacheck&callsign=' + callsign + '&band=' + band +'&mode=' + contactmode)
+                .then(response => response.json())
+                .then(data => {
+                        console.log(data.callsign)
+                        const datacallsign = data.callsign
+                        const datamode = data.mode
+                        const databand = data.band
+
+                        // if(callsign === document.getElementById('input').value && mode === document.getElementById('mode').value && band === document.getElementById('band').value) {
+                        //     
+                        // }else {
+                        //     alert(`Error: ${Callsign} was not added to the log. Please write it down foe entery into the log later.`)
+                        // }
+                });
+            }
+
+            function errorcolors() {
+                document.getElementById("input").style.backgroundColor = "Red";
+                document.getElementById("input").style.color = "White";
+            };
+
+            function noerrorcolors() {
+                document.getElementById("input").style.backgroundColor = "White";
+                document.getElementById("input").style.color = "Black";
+            };
+
+            function validcall() {
+                document.getElementById("input").style.backgroundColor = "Green";
+                document.getElementById("input").style.color = "White";
+                
+            };
+
+            function toolong() {
+                document.getElementById("input").style.backgroundColor = "Yellow";
+                document.getElementById("input").style.color = "Black";
+                document.getElementById("result").innerHTML = 'No data found for this callsign';
+            };
+
+            function addContact() {
+            document.getElementById('logbtn').disabled = true;
+            //layerGroup.clearLayers();
+            const callsign = document.getElementById('input').value
+            const callname = document.getElementById('result').innerHTML
+            const callclass = document.getElementById('class').value
+            const callsection = document.getElementById('section').value
+
+            const band = document.getElementById('band').value
+            const contactmode = document.getElementById('mode').value
+            const operator = document.getElementById('operator').value
+
+            const calllat = document.getElementById('lat').innerHTML
+            const calllong = document.getElementById('lng').innerHTML
+
+
+            let myurl = 'https://joefeyen.com/dbq/api.php?api=logcontact&callsign=' + callsign + '&class=' + callclass +'&section=' + callsection +'&band=' + band +'&mode=' + contactmode + '&operator=' + operator + '&lat=' + calllat + '&lng=' + calllong + '&name=' + callname
+            //console.log(myurl);
+                fetch(myurl)
+                    .then(response => response.text)
+                    .then(data => {
+                        //chechdata()
+                        clearData()
+                        getStats()
+                    });
+            };
+
+            function clearData() {
+                document.getElementById("input").value = '';
+                document.getElementById("section").value = '';
+                document.getElementById("class").value = '';
+                noerrorcolors();
+                layerGroup.clearLayers();
+                document.getElementById("result").innerHTML = '&nbsp;';
+                document.getElementById("class").style.backgroundColor = "White";
+                document.getElementById("class").style.color = "Black";
+                document.getElementById("section").style.backgroundColor = "White";
+                document.getElementById("section").style.color = "Black";
+                map.setView([30.566793, -0.678554],2);
+                document.getElementById('logbtn').disabled = true;
+                document.getElementById("input").focus();
+                getdata()
+            };
+
+            function checkClass() {
+                const classText = document.getElementById("class").value.toUpperCase();
+                let callClass = /([0-9])([0-9])?([A-Z])/.test(classText);
+                if(callClass == true) {
+                    document.getElementById("class").style.backgroundColor = "Green";
+                    document.getElementById("class").style.color = "White";
+                } else {
+                    document.getElementById("class").style.backgroundColor = "Yellow";
+                    document.getElementById("class").style.color = "Black";
+                };
+
+                if (callClass === '') {
+                    document.getElementById("class").style.backgroundColor = "White";
+                    document.getElementById("class").style.color = "Black";
+                };
+            };
+
+            function checkSection() {
+                const sectionText = document.getElementById("section").value.toUpperCase();
+                let callsection = /([A-Z])([A-Z])([A-Z])?/.test(sectionText);
+            
+                if(callsection === true) {
+                    document.getElementById("section").style.backgroundColor = "Green";
+                    document.getElementById("section").style.color = "White";
+                } else {
+                    document.getElementById("section").style.backgroundColor = "Yellow";
+                    document.getElementById("section").style.color = "Black";
+                };
+
+                if (callsection === '') {
+                    document.getElementById("section").style.backgroundColor = "White";
+                    document.getElementById("section").style.color = "Black";
+                } else {  
+                };
+            };
+
+            function search() {
+                let x = document.getElementById("input").value;
+                x = x.toUpperCase();
+
+                let call1x1 = /([A-Z])([0-9])([A-Z])/.test(x);
+                let call1x2 = /([A-Z])([0-9])([A-Z])([A-Z])/.test(x);
+                let call1x3 = /([A-Z])([0-9])([A-Z])([A-Z])([A-Z])/.test(x);
+
+                let call2x1 = /([A-Z])([A-Z])([A-Z])([0-9])/.test(x);
+                let call2x2 = /([A-Z])([A-Z])([A-Z])([0-9])([A-Z])/.test(x);
+                let call2x3 = /([A-Z])([A-Z])([0-9])([A-Z])([A-Z])([A-Z])/.test(x);
+
+                    if(call1x1 || call1x2 || call1x3 || call2x1 || call2x2 || call2x3 ===  true) {
+                        const band = document.getElementById("band").value;
+                        const mode = document.getElementById("mode").value;
+                        fetch(`https://joefeyen.com/dbq/api.php?api=check&callsign=${x}&band=${band}&mode=${mode}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const lat = data.lat;
+                            const lon = data.lon;
+                            const country = data.country;
+                            const fullname = data.name;
+                            const state = data.state;
+                            const status = data.status;
+                            if(status === "New Contact") {
+                                if(country === 'United States') {
+                                    document.getElementById("section").value = state;
+                                    document.getElementById("result").innerHTML = fullname;
+                                    checkSection();
+                                    validcall();
+                                    map.setView([lat,lon],6);
+                                    document.getElementById('logbtn').disabled = false;
+                                }else {
+                                    document.getElementById("section").value = "DX";
+                                    document.getElementById("input").style.backgroundColor = "Orange";
+                                    document.getElementById("input").style.color = "White";
+                                    document.getElementById("section").style.backgroundColor = "Orange";
+                                    document.getElementById("section").style.color = "White";
+                                    map.setView([lat,lon],5);
+                                    document.getElementById('logbtn').disabled = false;
+                                }
+                                addToMap(lat,lon,x,fullname)
+                                document.getElementById('lat').innerHTML = lat
+                                document.getElementById('lng').innerHTML = lon
+                                
+
+                            } else if (status === "Duplicate Contact") {
+                                document.getElementById("result").innerHTML =`Duplicate Contact!`;
+                                document.getElementById('logbtn').disabled = true;
+                                document.getElementById("input").style.backgroundColor = "Black";
+                                document.getElementById("input").style.color = "White";
+
+                                document.getElementById("class").style.backgroundColor = "Black";
+                                document.getElementById("class").style.color = "White";
+
+                                document.getElementById("section").style.backgroundColor = "Black";
+                                document.getElementById("section").style.color = "White";
+                            }
+                        })
+                        .catch(function() {
+                            layerGroup.clearLayers();
+                            document.getElementById("section").value = '';
+                            errorcolors();
+                            document.getElementById('logbtn').disabled = true;
+                        });   
+                    } else {
+                        
+                    layerGroup.clearLayers();
+                    noerrorcolors();
+                    }
+                    if(x.length <= 3) {
+                        document.getElementById("section").value = '';
+                        //document.getElementById("class").value = '';
+                        noerrorcolors();
+                        layerGroup.clearLayers();
+                        document.getElementById("result").innerHTML = '';
+                        document.getElementById("section").style.backgroundColor = "White";
+                        document.getElementById("section").style.color = "Black";
+                        map.setView([30.566793, -0.678554],2);
+                        document.getElementById('logbtn').disabled = true;
+                        document.getElementById("class").style.backgroundColor = "White";
+                        document.getElementById("class").style.color = "Black";
+
+                    }
+                    
+            };
+
+            function addToMap(lat,lon,callsign,name) {
+                layerGroup.clearLayers();
+
+                var marker = L.marker([lat, lon],{
+                    title: `${callsign} \n\n ${name}`
+                }).addTo(layerGroup);
+
+
+            };
+
+            function qrzSearch(callsign) {
+                fetch('https://xmldata.qrz.com/xml/current/?username=kd9hae;password=ArmY1234$$')
+                        .then (function(resp) {
+                            return resp.text();
+                        })
+                        .then(function(data) {
+                            let parser = new DOMParser(),
+                            xmlDoc = parser.parseFromString(data, 'text/xml');
+                            //console.log(data);
+                            const mykey = xmlDoc.getElementsByTagName('Key')[0].innerHTML;
+
+                            let URL = `https://xmldata.qrz.com/xml/current/?s=${mykey};callsign=${callsign}`
+                            //console.log(URL);
+                            fetch(URL)
+                            .then (function(resp) {
+                                return resp.text();
+                            })
+                            .then(function(data) {
+                            
+                                if(country === 'United States') {
+                                    const section = xmlDoc.getElementsByTagName('state')[0].innerHTML;
+                                    document.getElementById("section").value = section;
+                                    checkSection();
+                                    validcall();
+                                    map.setView([lat,lon],6);
+                                    document.getElementById('logbtn').disabled = false;
+                                }else {
+                                    document.getElementById("section").value = country;
+                                    document.getElementById("input").style.backgroundColor = "Orange";
+                                    document.getElementById("input").style.color = "White";
+                                    document.getElementById("section").style.backgroundColor = "Orange";
+                                    document.getElementById("section").style.color = "White";
+                                    map.setView([lat,lon],5);
+                                    document.getElementById('logbtn').disabled = false;
+                                }
+                                addToMap(lat,lon,callsign,fullname)
+                                checkContact();
+                            })
+                            .catch(function() {
+                                layerGroup.clearLayers();
+                                document.getElementById("section").value = '';
+                                errorcolors();
+                                document.getElementById('logbtn').disabled = true;
+                            });   
+                        })
+            };
+
+    </script>
+
+</body>
+</html>

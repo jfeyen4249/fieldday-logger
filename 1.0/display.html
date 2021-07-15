@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title></title>
+	<meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.6.0/Chart.min.js"></script>
+	<link href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" rel="stylesheet" /><script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+</head>
+<body>
+<style type="text/css">.mode-chart {
+            height: 250px;
+            width: 450px;
+        }
+
+        .chart {
+            display: inline-block;
+        }
+		.contacts {
+            margin-top: 10px;  
+        }
+
+
+        #customers {
+        padding-left: 5px;
+        padding-right: 5px;
+        font-family: Arial, Helvetica, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+        overflow-x: hidden;
+        }
+
+        #customers td,
+        #customers th {
+        border: 2px solid #000;
+        padding: 8px;
+        text-align: center;
+        font-size: 14px;
+        }
+
+        #customers tr {
+        background-color: #fff;
+        overflow-y: scroll;
+        }
+
+        #customers tr:hover {
+        background-color: rgb(126, 113, 113);
+        cursor: pointer;
+        }
+
+        #customers th {
+        padding-top: 12px;
+        padding-bottom: 12px;
+        text-align: left;
+        background-color: #343f35;
+        color: white;
+        text-align: center;
+        position: sticky;
+        top: 0;
+        }
+</style>
+<div id="map" style="height: 400px; width: 99%;"></div>
+
+<div class="mode-chart chart"><canvas id="myChart"></canvas></div>
+
+<div class="mode-chart chart"><canvas id="bandChart"></canvas></div>
+
+<div class="contacts">
+<div class="datatable">
+<div class="col-4 offset-md-1 content-box">
+<div class="box">
+<table id="customers">
+	<thead class="thead-dark">
+		<tr>
+			<th>Call</th>
+			<th>Name</th>
+			<th>Section</th>
+			<th>Class</th>
+			<th>Mode</th>
+			<th>Band</th>
+			<th>Operator</th>
+		</tr>
+	</thead>
+	<tbody class="bg-white">
+	</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<script>
+         var map = L.map('map').setView([30.566793, -0.678554],2);
+         L.tileLayer('https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=VRriVCRQ5SeLPdIdNuzi', {
+            attributions: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>'
+         }).addTo(map);
+
+         var layerGroup = L.layerGroup().addTo(map);
+
+         
+         fetch(`https://joefeyen.com/dbq/api.php?api=logs`)
+        .then(response => response.json())
+        .then(data => {
+            for(let i = 0; i < data.length; i++) {
+            //console.log(data[i].callsign); 
+            var marker = L.marker([data[i].lat, data[i].lng],{
+                title: `${data[i].callsign}`
+            }).addTo(layerGroup);
+            }
+
+
+        fetch(`https://joefeyen.com/dbq/count.php`)
+        .then(response => response.json())
+        .then(data => {
+        })
+        
+        const modeLables = ['','',''];
+        const modeColors = ['#2ae2','#4d42', '#ac4'];
+        const modePOS = 'top';
+        const modeTitle = "Contact Modes";
+        
+        let banddata = ['','','','','',''];
+        let modetdata = [0,0,0];
+
+        for(var i = 0; i < data.length; i++) {
+                            var obj = data[i];
+                            //console.log(obj.exact_row_count);
+                            if(obj.table_name == 'logs'){
+                                //  = obj.exact_row_count;
+
+                            }
+
+                            if(obj.table_name == 'SSB'){
+                                modetdata[0] = obj.exact_row_count;
+                                 
+                            }
+
+                            if(obj.table_name == 'CW'){
+                                modetdata[1] = obj.exact_row_count;
+                                 
+                            }
+
+                            if(obj.table_name == '10M'){
+                                modetdata[0] = obj.exact_row_count;        
+                            }
+
+                            if(obj.table_name == '15M'){
+                                banddata[1] = obj.exact_row_count;        
+                            }
+
+                            if(obj.table_name == '20M'){
+                                banddata[2] = obj.exact_row_count;        
+                            }
+
+                            if(obj.table_name == '40M'){
+                                banddata[3] = obj.exact_row_count;        
+                            }
+
+                            if(obj.table_name == '80m'){
+                                banddata[4] = obj.exact_row_count;        
+                            }
+
+                            if(obj.table_name == '160M'){
+                                banddata[5] = obj.exact_row_count;        
+                            }
+        
+        }
+        
+
+        console.log(banddata);
+        const bandLables = ['10 Meters','15 Meters','20 Meters','40 Meters','80 Meters','160 Meters'];
+        const bandColors = ['#33cc33','#ff3300','#ff5050','#ffff00','#663300','#000000','#cc33ff','#66ccff','#ff6600'];
+        const bandPOS = 'right';
+        const bandTitle = "Band Contacts";
+
+
+        loadChart(modetdata, 'myChart', modeLables, modeColors, modePOS, modeTitle);
+        loadChart(banddata, 'bandChart', bandLables, bandColors, bandPOS, bandTitle);
+
+        
+
+        function loadChart(chartdata,pageChart,chartLables,chartColors,chartLablePOS,chartTitle) {
+            let myChart = document.getElementById(`${pageChart}`).getContext('2d');
+            // Global Options
+            Chart.defaults.global.defaultFontFamily = 'Lato';
+            Chart.defaults.global.defaultFontSize = 12;
+            Chart.defaults.global.defaultFontColor = '#000';
+            Chart.defaults.global.backgroundColor = '#000';
+        
+            let massPopChart = new Chart(myChart, {
+            type:'horizontalBar', // bar, horizontalBar, pie, line, doughnut, radar, polarArea
+            data:{
+                labels: chartLables,
+                datasets:[{
+                label:'Download',
+                data: chartdata,
+                backgroundColor:'green',
+                backgroundColor: chartColors,
+                borderWidth:1,
+                borderColor:'#000',
+                hoverBorderWidth:3,
+                fill: false,
+                hoverBorderColor:'#000'
+                }]
+
+            },
+            options:{
+                title:{
+                display:true,
+                text: chartTitle,
+                fontSize:25,
+                fill: false
+                },
+                legend:{
+                display:false,
+                position: chartLablePOS,
+                labels:{
+                    fontColor:'#000'
+                }
+                
+                },
+                layout:{
+                padding:{
+                    left:10,
+                    right:40,
+                    bottom:0,
+                    top:0
+                    
+                }
+                },
+                tooltips:{
+                enabled:true
+                }
+            }
+            });
+        };         
+
+
+    fetch(`https://joefeyen.com/dbq/api.php?api=lastcontacts`)
+        .then(response => response.json())
+        .then(data => {
+            for(var i = 0; i < data.length; i++) {
+                var obj = data[i];
+                let table = document.querySelector('table');
+        
+            let ispdown = `<tr>
+                            <td>${obj.callsign}</td>
+                            <td>${obj.name}</td>
+                            <td>${obj.class}</td>
+                            <td>${obj.section}</td>
+                            <td>${obj.mode}</td>
+                            <td>${obj.band}</td>
+                            <td>${obj.operator}</td>
+                            </tr>`;
+                            table.innerHTML += ispdown;
+                }
+            
+        });
+
+    </script></body>
+</html>

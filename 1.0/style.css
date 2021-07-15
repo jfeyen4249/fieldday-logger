@@ -1,0 +1,90 @@
+body {
+  background-color: rgb(37, 27, 134);
+  color: white;
+  overflow: hidden;
+}
+
+.input {
+  margin-top: 10px;
+  width: 90%;
+  height: 80px;
+  font-size: 45px;
+  text-align: center;
+  border-radius: 25px;
+}
+
+.small-box {
+  width: 45%;
+}
+
+button {
+  font-size: 20px;
+  height: 50px;
+  width: 150px;
+  margin-bottom: 10px;
+}
+
+#result {
+  font-size: 30px;
+}
+
+.operator {
+  width: 125px;
+  margin-left: 15px;
+  height: 40px;
+  font-size: 20px;
+}
+
+.info {
+  font-size: 30px;
+}
+
+.footer {
+  position: absolute;
+  bottom: 0;
+  background-color: white;
+  color: black;
+  height: 6%;
+  width: 100%;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.space {
+  height: 20px;
+  content: "";
+}
+
+.box {
+  text-align: center; /*Keep the div plain text in the center horizontally*/
+
+  width: 40%;
+  height: 70%;
+  float: left;
+  margin-left: 1%;
+  margin-top: 3%;
+}
+
+.box2 {
+  text-align: center; /*Keep the div plain text in the center horizontally*/
+  width: 55%;
+  height: 535px;
+  float: right;
+  color: black;
+  margin: 0;
+  margin-top: 3%;
+  margin-left: 1%;
+  margin-left: 1%;
+  margin-bottom: 2%;
+}
+
+header {
+  text-align: center;
+  background-color: whitesmoke;
+  color: black;
+  height: 8%;
+}
+
+p {
+  font-size: 16px;
+}
